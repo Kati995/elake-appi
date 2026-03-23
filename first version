@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8">
+  <title>EläkeAppi</title>
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<h2>EläkeAppi</h2>
+
+<input id="saving" type="number" placeholder="Kuukauden säästö €">
+<button onclick="addSaving()">Lisää</button>
+
+<p id="result"></p>
+<canvas id="chart"></canvas>
+
+<script>
+let data = JSON.parse(localStorage.getItem("data")) || [];
+
+function addSaving() {
+  const val = Number(document.getElementById("saving").value);
+  if (!val) return;
+
+  data.push(val);
+  localStorage.setItem("data", JSON.stringify(data));
+  calculate();
+}
+
+function calculate() {
+  let savings = 10000;
+  const monthlyReturn = 0.05 / 12;
+  const target = 1500 * 12 / 0.04;
+
+  let values = [];
+
+  data.forEach(m => {
+    savings = savings * (1 + monthlyReturn) + m;
+    values.push(savings);
+  });
+
+  const avg = data.length
+    ? data.reduce((a,b)=>a+b)/data.length
+    : 0;
+
+  let goal = null;
+
+  for (let i = data.length; i < 21*12; i++) {
+    savings = savings * (1 + monthlyReturn) + avg;
+    values.push(savings);
+
+    if (!goal && savings >= target) goal = i;
+  }
+
+  document.getElementById("result").innerText =
+    goal
+    ? `Voit jäädä pois töistä noin ${(goal/12).toFixed(1)} vuoden päästä`
+    : "Et vielä saavuta tavoitetta";
+
+  const ctx = document.getElementById("chart").getContext("2d");
+  if (window.chart) window.chart.destroy();
+
+  window.chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: values.map((_,i)=>(i/12).toFixed(1)),
+      datasets: [{ data: values }]
+    }
+  });
+}
+
+calculate();
+</script>
+
+</body>
+</html>
